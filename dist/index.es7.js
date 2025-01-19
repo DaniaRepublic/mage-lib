@@ -1,90 +1,78 @@
-var k = Object.defineProperty;
-var L = (s) => {
-  throw TypeError(s);
-};
-var C = (s, e, t) => e in s ? k(s, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : s[e] = t;
-var c = (s, e, t) => C(s, typeof e != "symbol" ? e + "" : e, t), T = (s, e, t) => e.has(s) || L("Cannot " + t);
-var o = (s, e, t) => (T(s, e, "read from private field"), t ? t.call(s) : e.get(s)), r = (s, e, t) => e.has(s) ? L("Cannot add the same private member more than once") : e instanceof WeakSet ? e.add(s) : e.set(s, t), a = (s, e, t, i) => (T(s, e, "write to private field"), i ? i.call(s, t) : e.set(s, t), t);
-import { ThreeResourceManager as f } from "./index.es8.js";
-import { Clock as y } from "./index.es10.js";
-var l, h, u, n, p, m;
-class D {
+var c = Object.defineProperty;
+var p = (t, e, a) => e in t ? c(t, e, { enumerable: !0, configurable: !0, writable: !0, value: a }) : t[e] = a;
+var n = (t, e, a) => p(t, typeof e != "symbol" ? e + "" : e, a);
+import { BufferGeometry as m, Material as u, Texture as g, Mesh as o, Light as x, Box3Helper as w, Group as S } from "./index.es14.js";
+class k {
   constructor() {
-    r(this, l);
-    r(this, h);
-    r(this, u);
-    r(this, n);
-    r(this, p);
-    r(this, m);
-    c(this, "startDrawLoop", () => {
-      const e = o(this, n).getDelta();
-      this.drawLoopLogic(e), a(this, p, requestAnimationFrame(this.startDrawLoop));
-    });
-    c(this, "startPhysicsLoop", () => {
-      const e = o(this, h).getDelta(), t = performance.now();
-      this.physicsLoopLogic(e);
-      const i = performance.now();
-      a(this, m, setTimeout(this.startPhysicsLoop, 16.67 - (i - t)));
-    });
-    a(this, u, new f()), a(this, n, new y(!0)), a(this, h, new y(!0));
+    n(this, "geometries", /* @__PURE__ */ new Set());
+    n(this, "materials", /* @__PURE__ */ new Set());
+    n(this, "textures", /* @__PURE__ */ new Set());
+    n(this, "meshes", /* @__PURE__ */ new Set());
+    n(this, "lights", /* @__PURE__ */ new Set());
+    n(this, "box3Helpers", /* @__PURE__ */ new Set());
+    n(this, "groups", /* @__PURE__ */ new Set());
+    n(this, "scene", null);
+    n(this, "renderer", null);
+    n(this, "controls", null);
   }
-  get physics() {
-    return o(this, l);
+  track(e) {
+    return e instanceof m && this.geometries.add(e), e instanceof u && this.materials.add(e), e instanceof g && this.textures.add(e), e instanceof o && this.meshes.add(e), e instanceof x && this.lights.add(e), e instanceof w && this.box3Helpers.add(e), e instanceof S && this.groups.add(e), e;
   }
-  set physics(e) {
-    a(this, l, e);
+  setScene(e) {
+    this.scene = e;
   }
-  get threeResourceManager() {
-    return o(this, u);
+  setRenderer(e) {
+    this.renderer = e;
   }
-  get drawClock() {
-    return o(this, n);
+  setControls(e) {
+    this.controls = e;
   }
-  get physicsClock() {
-    return o(this, h);
-  }
-  get drawLoopAnimationFrameId() {
-    return o(this, p);
-  }
-  get physicsLoopTimeoutId() {
-    return o(this, m);
-  }
-  customCleanup() {
-  }
-  derivedCleanup() {
-  }
-  cleanup() {
-    clearTimeout(o(this, m)), cancelAnimationFrame(o(this, p)), this.physics.free(), this.threeResourceManager.dispose(), this.derivedCleanup(), this.customCleanup();
+  /**
+   * Release all memory used by this manager.
+   */
+  dispose() {
+    var e, a, h;
+    this.geometries.forEach((i) => i.dispose()), this.materials.forEach((i) => i.dispose()), this.textures.forEach((i) => i.dispose()), this.lights.forEach((i) => i.dispose()), this.box3Helpers.forEach((i) => i.dispose()), this.groups.forEach((i) => {
+      i.traverse((r) => {
+        "dispose" in r && typeof r.dispose == "function" && r.dispose();
+      });
+    }), (e = this.renderer) == null || e.dispose(), (a = this.controls) == null || a.dispose(), (h = this.scene) == null || h.clear(), this.geometries.clear(), this.materials.clear(), this.textures.clear(), this.meshes.clear();
   }
 }
-l = new WeakMap(), h = new WeakMap(), u = new WeakMap(), n = new WeakMap(), p = new WeakMap(), m = new WeakMap();
-var d, g;
-class M extends D {
-  constructor() {
-    super(...arguments);
-    r(this, d);
-    r(this, g);
-    c(this, "drawTimer", [0, 0]);
-    c(this, "physicsTimer", [0, 0]);
-    c(this, "startDrawLoop", () => {
-      const t = this.drawClock.getDelta(), i = performance.now();
-      this.drawLoopLogic(t);
-      const w = performance.now();
-      this.drawTimer[1] += w - i, ++this.drawTimer[0] >= 60 && (console.log("drawLoopLogic:"), console.log(`	deltaTime ${t * 1e3} ms`), console.log(`	took ${this.drawTimer[1] / 60} ms to run on average.`), this.drawTimer = [0, 0]), a(this, g, requestAnimationFrame(this.startDrawLoop));
-    });
-    c(this, "startPhysicsLoop", () => {
-      const t = this.physicsClock.getDelta(), i = performance.now();
-      this.physicsLoopLogic(t);
-      const w = performance.now();
-      this.physicsTimer[1] += w - i, ++this.physicsTimer[0] >= 60 && (console.log("physicsLoopLogic:"), console.log(`	deltaTime ${t * 1e3} ms`), console.log(`	took ${this.physicsTimer[1] / 60} ms to run on average.`), this.physicsTimer = [0, 0]), a(this, d, setTimeout(this.startPhysicsLoop, 16.67 - (w - i)));
-    });
+function G(t = new k()) {
+  function e() {
+    t.dispose();
   }
-  cleanup() {
-    clearTimeout(o(this, d)), cancelAnimationFrame(o(this, g)), this.physics.free(), this.threeResourceManager.dispose(), this.customCleanup();
+  function a(s) {
+    return t.track(s());
   }
+  function h(s) {
+    return t.track(s());
+  }
+  function i(s) {
+    return t.track(s());
+  }
+  function r(s, l) {
+    return t.track(new o(s, l));
+  }
+  function f(s) {
+    return t.track(s());
+  }
+  function d(s) {
+    return t.track(s());
+  }
+  return {
+    resources: t,
+    cleanup: e,
+    createGeometry: a,
+    createMaterial: h,
+    createTexture: i,
+    createMesh: r,
+    createLight: f,
+    createGroup: d
+  };
 }
-d = new WeakMap(), g = new WeakMap();
 export {
-  D as GameBaseClient,
-  M as GameBaseClientDebug
+  k as ThreeResourceManager,
+  G as useThree
 };
