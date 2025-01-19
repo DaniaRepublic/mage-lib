@@ -1,16 +1,17 @@
 {
     "compilerOptions": {
         "target": "ESNext",
-        "module": "NodeNext",
-        "moduleResolution": "nodenext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
         "jsx": "preserve",
         "jsxImportSource": "solid-js",
         "isolatedModules": true,
+        "declaration": true,
+        "emitDeclarationOnly": true,
         "outDir": "./dist",
-        "declaration": true, // Add this to generate .d.ts files
-        "noEmit": false // Remove this or set to false
+        "skipLibCheck": true
     },
     "include": [
         "lib"
