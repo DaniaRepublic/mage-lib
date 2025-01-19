@@ -1,3 +1,4 @@
+/** @jsxImportSource solid-js */
 import { Accessor, createContext, createSignal, JSX, onCleanup, onMount, useContext } from "solid-js";
 
 export type TAvailableKeys =

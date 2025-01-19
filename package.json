@@ -1,6 +1,6 @@
 {
     "name": "@ivnm/mage-lib",
-    "version": "1.0.3",
+    "version": "1.0.2",
     "type": "module",
     "module": "./dist/index.js",
     "main": "./dist/index.js",
@@ -13,7 +13,7 @@
         "./dist/*": "./dist/*"
     },
     "scripts": {
-        "build": "vite build",
+        "build": "tsc",
         "prepare": "npm run build"
     },
     "author": "",
@@ -36,8 +36,6 @@
     "devDependencies": {
         "@types/node": "^22.10.7",
         "@types/three": "^0.172.0",
-        "typescript": "^5.7.3",
-        "vite": "^6.0.7",
-        "vite-plugin-solid": "^2.11.0"
+        "typescript": "^5.7.3"
     }
 }

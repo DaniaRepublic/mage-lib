@@ -7,19 +7,16 @@
         "esModuleInterop": true,
         "jsx": "preserve",
         "jsxImportSource": "solid-js",
-        "types": [
-            "vite/client"
-        ],
-        "noEmit": true,
         "isolatedModules": true,
         "outDir": "./dist",
         "declaration": true, // Add this to generate .d.ts files
+        "noEmit": false // Remove this or set to false
     },
-    // "include": [
-    //     "lib"
-    // ],
-    // "exclude": [
-    //     "node_modules",
-    //     "dist"
-    // ]
+    "include": [
+        "lib"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
 }
