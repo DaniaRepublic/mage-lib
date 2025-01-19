@@ -13,6 +13,7 @@
         "./dist/*": "./dist/*"
     },
     "scripts": {
+        "patch": "npm version patch",
         "build": "tsc",
         "prepare": "npm run build"
     },
