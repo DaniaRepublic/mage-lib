@@ -7,7 +7,7 @@ import { Physics } from "./rapier/physics.js";
 import { useThree } from "./three/resource-managing.js";
 import { GameObjectNetworkedBase, GameObjectNetworkedBaseClient, TUserData } from "./game-object-base.js";
 
-type TNetworkObjectState = {
+export type TNetworkObjectState = {
   userData: TUserData,
   translation: {
     x: number,
@@ -22,126 +22,151 @@ type TNetworkObjectState = {
   }
 }
 
-// export class GameBaseMultiplayerServer extends GameBase {
-//   #clients: Set<WebSocket>
-//   #networkClock: THREE.Clock;
-//   #networkedObjects: Set<GameObjectNetworkedBase>;
-//   #networkLoopTimeoutId: number | NodeJS.Timeout
 
-//   constructor(clients: WebSocket[]) {
-//     super()
-//     this.#clients = new Set(clients)
-//     this.#networkClock = new THREE.Clock(true)
-//   }
+class GameObjectNetworked extends GameObjectNetworkedBase {
+  cubeUserData: TUserData | undefined
 
-//   addClient(socket: WebSocket) {
-//     socket.onerror = (e) => {
-//       console.log("socket error")
-//     }
+  async setup() {
+    const cube = this.world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic()
+        .setCanSleep(false)
+    )
+    cube.setTranslation({ x: 0, y: 3, z: 0 }, true)
+    this.root = cube
+    this.world.createCollider(
+      RAPIER.ColliderDesc.cuboid(.5, .5, .5)
+        .setRestitution(2),
+      cube
+    )
+  }
 
-//     socket.onopen = (e) => {
-//       console.log("socket open")
-//     }
+  physicsLoopLogic(deltaTime: number): void {
 
-//     socket.onmessage = (e) => {
-//       // We will agree to use json encoding
-//       const msg = JSON.parse(e.data)
-//       console.log(msg)
-//     }
-//   }
-
-//   // Setup physical world.
-//   async setup() {
-//     const gravity = { x: 0, y: -10, z: 0 }
-//     this.physics = await Physics.setup(gravity)
-
-//     const world = this.physics.world
-
-//     const floor = world.createRigidBody(
-//       RAPIER.RigidBodyDesc.fixed()
-//     )
-//     floor.setTranslation({ x: 0, y: -0.1, z: 0 }, true)
-//     world.createCollider(
-//       RAPIER.ColliderDesc.cuboid(10, 0.1, 10),
-//       floor
-//     )
-
-//     const cube = world.createRigidBody(
-//       RAPIER.RigidBodyDesc.dynamic()
-//     )
-//     cube.setTranslation({ x: 0, y: 1, z: 0 }, true)
-//     world.createCollider(
-//       RAPIER.ColliderDesc.cuboid(1, 1, 1),
-//       cube
-//     )
-//   }
-
-//   /**
-//    * Shares network state with all connected clients.
-//    * @param deltaTime time elapsed since last call.
-//    */
-//   networkLoopLogic(deltaTime: number): void {
-//     let states = []
-
-//     this.#networkedObjects.forEach((obj) => {
-//       // Prepare data to be sent
-//       const pos = obj.translation()
-//       const rot = obj.rotation()
-
-//       const state: TNetworkObjectState = {
-//         userData: obj.userData,
-//         translation: {
-//           x: pos.x,
-//           y: pos.y,
-//           z: pos.z
-//         },
-//         rotation: {
-//           x: rot.x,
-//           y: rot.y,
-//           z: rot.z,
-//           w: rot.w
-//         }
-//       }
-
-//       states.push(state)
-//     })
-
-//     const statesJson = JSON.stringify(states)
-
-//     // Share network state with all connected clients
-//     this.#clients.forEach((cli) => {
-//       cli.send(statesJson)
-//     })
-//   }
-
-//   /**
-//    * Needs to be an arrow function to save 'this' reference to the class in function scope.
-//    * Runs at 10Hz.
-//    */
-//   startNetworkLoop = () => {
-//     const deltaTime = this.#networkClock.getDelta()
-
-//     // measure time it took to run the loop and subtract it from delay until next frame
-//     const tik = performance.now()
-//     this.networkLoopLogic(deltaTime)
-//     const tok = performance.now()
+  }
+}
 
 
-//     this.#networkLoopTimeoutId = setTimeout(this.startPhysicsLoop, 100 - (tok - tik))
-//   }
+export class GameBaseMultiplayerServer extends GameBase {
+  #clients: Set<WebSocket>
+  #networkClock: THREE.Clock
+  #networkedObjects: WeakMap<WebSocket, GameObjectNetworkedBase>
+  #networkLoopTimeoutId: number | NodeJS.Timeout
 
-//   derivedCleanup(): void {
-//     clearTimeout(this.#networkLoopTimeoutId)
-//     this.#clients.forEach((cli) => cli.close(3001, "game ended"))
-//   }
+  constructor(clients: WebSocket[]) {
+    super()
+    this.#clients = new Set(clients)
+    this.#networkClock = new THREE.Clock(true)
+  }
 
-//   physicsLoopLogic(deltaTime: number): void {
+  addClient(socket: WebSocket) {
+    socket.onerror = (e) => {
+      console.log("socket error")
+    }
 
-//   }
-// }
+    socket.onopen = async (e) => {
+      console.log("socket open")
+      const cli = new GameObjectNetworked(this.physics.world, { id: "1", networked: true })
+      await cli.setup()
+      this.#networkedObjects.set(socket, cli)
+    }
+
+    socket.onmessage = (e) => {
+      // We will agree to use json encoding
+      const msg = JSON.parse(e.data)
+      console.log(msg)
+    }
+
+    socket.onclose = (e) => {
+      this.#networkedObjects.delete(socket)
+    }
+  }
+
+  // Setup physical world.
+  async setup() {
+    const gravity = { x: 0, y: -10, z: 0 }
+    this.physics = await Physics.setup(gravity)
+
+    const world = this.physics.world
+
+    const floor = world.createRigidBody(
+      RAPIER.RigidBodyDesc.fixed()
+    )
+    floor.setTranslation({ x: 0, y: -0.1, z: 0 }, true)
+    world.createCollider(
+      RAPIER.ColliderDesc.cuboid(10, 0.1, 10),
+      floor
+    )
+  }
+
+  /**
+   * Shares network state with all connected clients.
+   * @param deltaTime time elapsed since last call.
+   */
+  networkLoopLogic(deltaTime: number): void {
+    let states = []
+
+    this.#clients.forEach(cli => {
+      const obj = this.#networkedObjects.get(cli)
+      if (!obj) return
+
+      // Prepare data to be sent
+      const pos = obj.translation()
+      const rot = obj.rotation()
+
+      const state: TNetworkObjectState = {
+        userData: obj.userData,
+        translation: {
+          x: pos.x,
+          y: pos.y,
+          z: pos.z
+        },
+        rotation: {
+          x: rot.x,
+          y: rot.y,
+          z: rot.z,
+          w: rot.w
+        }
+      }
+
+      states.push(state)
+    })
+
+    const statesJson = JSON.stringify(states)
+
+    // Share network state with all connected clients
+    this.#clients.forEach((cli) => {
+      cli.send(statesJson)
+    })
+  }
+
+  /**
+   * Needs to be an arrow function to save 'this' reference to the class in function scope.
+   * Runs at 10Hz.
+   */
+  startNetworkLoop = () => {
+    const deltaTime = this.#networkClock.getDelta()
+
+    // measure time it took to run the loop and subtract it from delay until next frame
+    const tik = performance.now()
+    this.networkLoopLogic(deltaTime)
+    const tok = performance.now()
 
 
-class GameObjectNetworked extends GameObjectNetworkedBaseClient {
+    this.#networkLoopTimeoutId = setTimeout(this.startPhysicsLoop, 1000 - (tok - tik))
+  }
+
+  physicsLoopLogic(deltaTime: number): void {
+    this.physics.world.step()
+  }
+
+  derivedCleanup(): void {
+    clearTimeout(this.#networkLoopTimeoutId)
+    this.#clients.forEach((cli) => cli.close(3001, "game ended"))
+  }
+}
+
+
+class GameObjectNetworkedClient extends GameObjectNetworkedBaseClient {
   cubeMesh: THREE.Mesh
   cubeUserData: TUserData
 
@@ -157,7 +182,7 @@ class GameObjectNetworked extends GameObjectNetworkedBaseClient {
     scene.add(cubeMesh)
 
     const cube = this.world.createRigidBody(
-      RAPIER.RigidBodyDesc.dynamic()
+      RAPIER.RigidBodyDesc.kinematicPositionBased()
         .setCanSleep(false)
     )
     cube.setTranslation({ x: 0, y: 3, z: 0 }, true)
@@ -251,7 +276,7 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
       floor
     )
 
-    this.#networkedSelf = new GameObjectNetworked(world, this.threeResourceManager, { id: "", networked: true })
+    this.#networkedSelf = new GameObjectNetworkedClient(world, this.threeResourceManager, { id: "", networked: true })
     await this.#networkedSelf.setup()
   }
 

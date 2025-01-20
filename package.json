@@ -18,7 +18,7 @@
         "patch": "npm version patch",
         "build": "vite build && tsc --emitDeclarationOnly",
         "prepare": "npm run build",
-        "publish": "pnpm publish --access public"
+        "publish:public": "pnpm publish --access public"
     },
     "author": "",
     "license": "ISC",
