@@ -69,16 +69,18 @@ export class GameBaseMultiplayerServer extends GameBase {
       const cli = new GameObjectNetworked(this.physics.world, { id: "1", networked: true })
       await cli.setup()
       this.#networkedObjects.set(socket, cli)
+      this.#clients.add(socket)
     }
 
     socket.onmessage = (e) => {
       // We will agree to use json encoding
       const msg = JSON.parse(e.data)
-      console.log(msg)
+      console.log(`msg from ${socket.url}:`, msg)
     }
 
     socket.onclose = (e) => {
       this.#networkedObjects.delete(socket)
+      this.#clients.delete(socket)
     }
   }
 
@@ -108,7 +110,7 @@ export class GameBaseMultiplayerServer extends GameBase {
 
     this.#clients.forEach(cli => {
       const obj = this.#networkedObjects.get(cli)
-      if (!obj) return
+      // if (!obj) return
 
       // Prepare data to be sent
       const pos = obj.translation()
@@ -151,7 +153,6 @@ export class GameBaseMultiplayerServer extends GameBase {
     const tik = performance.now()
     this.networkLoopLogic(deltaTime)
     const tok = performance.now()
-
 
     this.#networkLoopTimeoutId = setTimeout(this.startPhysicsLoop, 1000 - (tok - tik))
   }
@@ -232,7 +233,14 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
     this.#socket.onmessage = (e) => {
       // We will agree to use json encoding
       const msg = JSON.parse(e.data)
-      console.log(msg)
+      console.log(`msg from ${socket.url}:`, msg)
+
+      // Parse the message, if the message is of type create object, 
+      // create it, if it's a data packet, replicate changes locally.
+    }
+
+    this.#socket.onclose = (e) => {
+
     }
 
     this.#networkClock = new THREE.Clock(true)
