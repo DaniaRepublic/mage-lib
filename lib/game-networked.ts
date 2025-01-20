@@ -56,6 +56,7 @@ export class GameBaseMultiplayerServer extends GameBase {
     super()
     this.#clients = new Set(clients)
     this.#networkClock = new THREE.Clock(true)
+    this.#networkedObjects = new WeakMap()
   }
 
   addClient(socket: WebSocket) {
