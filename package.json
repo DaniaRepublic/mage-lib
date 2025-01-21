@@ -34,6 +34,7 @@
     "dependencies": {
         "@dimforge/rapier3d-compat": "^0.14.0",
         "@solidjs/router": "^0.15.3",
+        "socket.io": "^4.8.1",
         "solid-js": "^1.9.4",
         "three": "^0.172.0"
     },

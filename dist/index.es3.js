@@ -30,8 +30,9 @@ class V extends H {
   physicsLoopLogic(e) {
   }
 }
+const ne = "asdf";
 var p, L, f, x;
-class ne extends W {
+class ae extends W {
   constructor(e) {
     super();
     c(this, p);
@@ -138,7 +139,7 @@ class X extends Q {
   }
 }
 var a, b, M, w, C;
-class ae extends I {
+class ce extends I {
   constructor(e) {
     super();
     c(this, a);
@@ -222,6 +223,7 @@ class ae extends I {
 }
 a = new WeakMap(), b = new WeakMap(), M = new WeakMap(), w = new WeakMap(), C = new WeakMap();
 export {
-  ae as GameBaseMultiplayerClient,
-  ne as GameBaseMultiplayerServer
+  ce as GameBaseMultiplayerClient,
+  ae as GameBaseMultiplayerServer,
+  ne as HI
 };

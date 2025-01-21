@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import RAPIER from "@dimforge/rapier3d-compat";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
+import { Socket } from "socket.io";
 
 import { GameBase, GameBaseClient } from "./game-base.js";
 import { Physics } from "./rapier/physics.js";
@@ -45,14 +46,13 @@ class GameObjectNetworked extends GameObjectNetworkedBase {
   }
 }
 
-
 export class GameBaseMultiplayerServer extends GameBase {
-  #clients: Set<WebSocket>
+  #clients: Set<Socket>
   #networkClock: THREE.Clock
-  #networkedObjects: WeakMap<WebSocket, GameObjectNetworkedBase>
+  #networkedObjects: WeakMap<Socket, GameObjectNetworkedBase>
   #networkLoopTimeoutId: number | NodeJS.Timeout
 
-  constructor(clients: WebSocket[]) {
+  constructor(clients: Socket[]) {
     super()
     this.#clients = new Set(clients)
     this.#networkClock = new THREE.Clock(true)
@@ -60,29 +60,29 @@ export class GameBaseMultiplayerServer extends GameBase {
     console.log("hi")
   }
 
-  addClient(socket: WebSocket) {
-    socket.onerror = (e) => {
+  addClient(socket: Socket) {
+    socket.on("error", (e) => {
       console.log("socket error")
-    }
+    })
 
-    socket.onopen = async (e) => {
+    socket.on("open", async (e) => {
       console.log("socket open")
       const cli = new GameObjectNetworked(this.physics.world, { id: "1", networked: true })
       await cli.setup()
       this.#networkedObjects.set(socket, cli)
       this.#clients.add(socket)
-    }
+    })
 
-    socket.onmessage = (e) => {
+    socket.on("message", (e) => {
       // We will agree to use json encoding
       const msg = JSON.parse(e.data)
-      console.log(`msg from ${socket.url}:`, msg)
-    }
+      console.log(`msg from ${socket.id}:`, msg)
+    })
 
-    socket.onclose = (e) => {
+    socket.on("close", (e) => {
       this.#networkedObjects.delete(socket)
       this.#clients.delete(socket)
-    }
+    })
   }
 
   // Setup physical world.
@@ -168,7 +168,7 @@ export class GameBaseMultiplayerServer extends GameBase {
 
   derivedCleanup(): void {
     clearTimeout(this.#networkLoopTimeoutId)
-    this.#clients.forEach((cli) => cli.close(3001, "game ended"))
+    this.#clients.forEach((cli) => cli.disconnect(true))
   }
 }
 
@@ -214,7 +214,7 @@ class GameObjectNetworkedClient extends GameObjectNetworkedBaseClient {
 
 
 export class GameBaseMultiplayerClient extends GameBaseClient {
-  #socket: WebSocket
+  #socket: Socket
   #networkClock: THREE.Clock
   #networkedObjects: Map<string, GameObjectNetworkedBaseClient>
   #networkedSelf: GameObjectNetworkedBaseClient
@@ -222,32 +222,31 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
 
   camera: THREE.PerspectiveCamera
 
-  constructor(socket: WebSocket) {
+  constructor(socket: Socket) {
     super()
 
     this.#socket = socket
 
-    // Setup socket.
-    this.#socket.onerror = (e) => {
+    socket.on("error", (e) => {
       console.log("socket error")
-    }
+    })
 
-    this.#socket.onopen = (e) => {
+    socket.on("open", (e) => {
       console.log("socket open")
-    }
+    })
 
-    this.#socket.onmessage = (e) => {
+    socket.on("message", (e) => {
       // We will agree to use json encoding
       const msg = JSON.parse(e.data)
-      console.log(`msg from ${socket.url}:`, msg)
+      console.log(`msg from ${socket.id}:`, msg)
 
       // Parse the message, if the message is of type create object, 
       // create it, if it's a data packet, replicate changes locally.
-    }
+    })
 
-    this.#socket.onclose = (e) => {
+    socket.on("close", (e) => {
       console.log("socket closed")
-    }
+    })
 
     this.#networkClock = new THREE.Clock(true)
   }
@@ -300,7 +299,7 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
    * @param deltaTime time elapsed since last call.
    */
   networkLoopLogic(deltaTime: number): void {
-    if (this.#socket.readyState !== WebSocket.OPEN) {
+    if (this.#socket.connected) {
       return
     }
 
@@ -356,6 +355,6 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
 
   derivedCleanup(): void {
     clearTimeout(this.#networkLoopTimeoutId)
-    this.#socket.close(3001, "exiting game")
+    this.#socket.disconnect(true)
   }
 }

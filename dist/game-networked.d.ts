@@ -15,6 +15,7 @@ export type TNetworkObjectState = {
         w: number;
     };
 };
+export declare const HI = "asdf";
 export declare class GameBaseMultiplayerServer extends GameBase {
     #private;
     constructor(clients: WebSocket[]);
