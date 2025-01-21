@@ -136,6 +136,8 @@ export class GameBaseMultiplayerServer extends GameBase {
 
     const statesJson = JSON.stringify(states)
 
+    console.log('Networked state:', statesJson)
+
     // Share network state with all connected clients
     this.#clients.forEach((cli) => {
       cli.send(statesJson)
@@ -221,6 +223,7 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
     super()
 
     this.#socket = socket
+
     // Setup socket.
     this.#socket.onerror = (e) => {
       console.log("socket error")
