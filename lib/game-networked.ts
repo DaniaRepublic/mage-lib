@@ -57,6 +57,7 @@ export class GameBaseMultiplayerServer extends GameBase {
     this.#clients = new Set(clients)
     this.#networkClock = new THREE.Clock(true)
     this.#networkedObjects = new WeakMap()
+    console.log("hi")
   }
 
   addClient(socket: WebSocket) {
@@ -149,6 +150,8 @@ export class GameBaseMultiplayerServer extends GameBase {
    * Runs at 10Hz.
    */
   startNetworkLoop = () => {
+    console.log("running network loop")
+
     const deltaTime = this.#networkClock.getDelta()
 
     // measure time it took to run the loop and subtract it from delay until next frame
@@ -156,7 +159,7 @@ export class GameBaseMultiplayerServer extends GameBase {
     this.networkLoopLogic(deltaTime)
     const tok = performance.now()
 
-    this.#networkLoopTimeoutId = setTimeout(this.startPhysicsLoop, 1000 - (tok - tik))
+    this.#networkLoopTimeoutId = setTimeout(this.startNetworkLoop, 1000 - (tok - tik))
   }
 
   physicsLoopLogic(deltaTime: number): void {
@@ -243,7 +246,7 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
     }
 
     this.#socket.onclose = (e) => {
-
+      console.log("socket closed")
     }
 
     this.#networkClock = new THREE.Clock(true)
