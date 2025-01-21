@@ -49,7 +49,7 @@ class ne extends W {
       const o = performance.now();
       h(this, x, setTimeout(this.startNetworkLoop, 1e3 - (o - t)));
     });
-    h(this, p, new Set(e)), h(this, L, new G(!0)), h(this, f, /* @__PURE__ */ new WeakMap());
+    h(this, p, new Set(e)), h(this, L, new G(!0)), h(this, f, /* @__PURE__ */ new WeakMap()), console.log("hi");
   }
   addClient(e) {
     e.onerror = (t) => {
