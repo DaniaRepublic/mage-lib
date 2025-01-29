@@ -1,74 +1,29 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/Addons.js";
+import { OrbitControls, PointerLockControls } from "three/examples/jsm/Addons.js";
 import { Socket } from "socket.io";
 import { Socket as CliSocket } from "socket.io-client";
 
 import { Physics } from "./rapier/physics.js";
 import { useThree } from "./three/resource-managing.js";
 import { GameBase, GameBaseClient } from "./game-base.js";
-import { GameObjectNetworkedBase, GameObjectNetworkedBaseClient, TUserData } from "./game-object-base.js";
+import { GameObjectNetworkedBase, GameObjectNetworkedBaseClient } from "./game-object-base.js";
+import { getStateFromNetworkedObject, TNetworkObjectState } from "./game-networked.js";
+import { NetworkedPlayerClient, NetworkedPlayerServer } from "./game-objects/player-networked.js";
+import { TKeyboardStateObj } from "./keyboard-context.jsx";
 
 
 /** In ms. */
-const NETWORK_UPDATE_INTERVAL = 1000
+const NETWORK_UPDATE_INTERVAL = 100
 
-export type TNetworkObjectState = {
-  userData: TUserData,
-  translation: {
-    x: number,
-    y: number,
-    z: number
-  },
-  rotation: {
-    x: number,
-    y: number,
-    z: number,
-    w: number
-  }
+
+export type TNetworkedPlayerState = {
+  objectState: TNetworkObjectState,
+  keyboardState: TKeyboardStateObj
 }
 
 
-export function getStateFromNetworkedObject(obj: GameObjectNetworkedBase): TNetworkObjectState {
-  const pos = obj.translation()
-  const rot = obj.rotation()
-
-  return {
-    userData: obj.userData,
-    translation: {
-      x: pos.x,
-      y: pos.y,
-      z: pos.z
-    },
-    rotation: {
-      x: rot.x,
-      y: rot.y,
-      z: rot.z,
-      w: rot.w
-    }
-  }
-}
-
-
-class GameObjectNetworked extends GameObjectNetworkedBase {
-  async setup() {
-    const cube = this.world.createRigidBody(
-      RAPIER.RigidBodyDesc.dynamic()
-    )
-    cube.setTranslation({ x: 0, y: 3, z: 0 }, true)
-    this.root = cube
-    this.world.createCollider(
-      RAPIER.ColliderDesc.cuboid(.5, .5, .5)
-        .setRestitution(2),
-      cube
-    )
-  }
-
-  physicsLoopLogic(deltaTime: number) { }
-}
-
-
-export class GameBaseMultiplayerServer extends GameBase {
+export class GameWithPlayerMultiplayerServer extends GameBase {
   #clients: Set<Socket>
   #networkClock: THREE.Clock
   #networkedObjects: WeakMap<Socket, GameObjectNetworkedBase>
@@ -92,26 +47,25 @@ export class GameBaseMultiplayerServer extends GameBase {
     console.log(`socket ${socketId} connected.`)
 
     // setup client
-    const cliGameObject = new GameObjectNetworked(this.physics.world, { id: socketId, networked: true })
+    const cliGameObject = new NetworkedPlayerServer(this.physics.world, { id: socketId, networked: true })
     await cliGameObject.setup()
-
-    socket.on("state:player", (state: TNetworkObjectState) => {
-      console.log(`msg from ${socketId}:`, state)
-      // Prevent client from modifying positions of other objects.
-      // This is very rudimentary as doesn't check if the position provided by the client is meaningful (i.e. they can send any position).
-      if (state.userData.id !== socketId) return
-    })
-
-    socket.on("disconnect", (reason) => {
-      this.physics.world.removeRigidBody(this.#networkedObjects.get(socket).root)
-      this.#networkedObjects.delete(socket)
-      this.#clients.delete(socket)
-      this.notifyClientsClientLeft(socketId)
-      console.log(`socket ${socketId} disconnected because: ${reason}.`)
-    })
 
     this.#networkedObjects.set(socket, cliGameObject)
     this.#clients.add(socket)
+
+    socket.on("state:player", (state: TNetworkedPlayerState[]) => {
+      // TODO: verify state is correct
+      cliGameObject.addNetworkedPlayerStates(state)
+    })
+
+    socket.on("disconnect", (reason) => {
+      this.physics.world.removeRigidBody(cliGameObject.root)
+      this.#networkedObjects.delete(socket)
+      this.#clients.delete(socket)
+      this.notifyClientsClientLeft(socketId)
+
+      console.log(`socket ${socketId} disconnected because: ${reason}.`)
+    })
 
     // notify all the other client about this new client
     this.notifyClientsNewClient(cliGameObject)
@@ -134,7 +88,7 @@ export class GameBaseMultiplayerServer extends GameBase {
     socket.emit("client:new", { data: states })
   }
 
-  notifyClientsNewClient(cliObject: GameObjectNetworked) {
+  notifyClientsNewClient(cliObject: NetworkedPlayerServer) {
     const state = getStateFromNetworkedObject(cliObject)
 
     this.#clients.forEach(clientSocket => {
@@ -201,6 +155,10 @@ export class GameBaseMultiplayerServer extends GameBase {
   }
 
   physicsLoopLogic(deltaTime: number) {
+    this.#clients.forEach(clientSocket => {
+      const networkedObject = this.#networkedObjects.get(clientSocket)
+      networkedObject.physicsLoopLogic(deltaTime)
+    })
     this.physics.world.step()
   }
 
@@ -211,57 +169,21 @@ export class GameBaseMultiplayerServer extends GameBase {
 }
 
 
-class GameObjectNetworkedClient extends GameObjectNetworkedBaseClient {
-  async setup() {
-    const { resources, createGeometry, createMaterial, createMesh } = useThree(this.threeResourceManager)
-
-    const scene = resources.scene
-
-    const cubeGeom = createGeometry(() => new THREE.BoxGeometry(1, 1, 1))
-    const cubeMat = createMaterial(() => new THREE.MeshBasicMaterial({ color: 0x1111bb }))
-    const cubeMesh = createMesh(cubeGeom, cubeMat)
-    this.rendererRoot = cubeMesh
-    scene.add(cubeMesh)
-
-    const cube = this.world.createRigidBody(
-      RAPIER.RigidBodyDesc.kinematicPositionBased()
-    )
-    cube.setTranslation({ x: 0, y: 3, z: 0 }, true)
-    this.root = cube
-    this.world.createCollider(
-      RAPIER.ColliderDesc.cuboid(.5, .5, .5)
-        .setRestitution(2),
-      cube
-    )
-  }
-
-  physicsLoopLogic(deltaTime: number) { }
-
-  drawLoopLogic(deltaTime: number) {
-    const pos = this.translation()
-    const rot = this.rotation()
-
-    this.rendererRoot.position.set(pos.x, pos.y, pos.z)
-    this.rendererRoot.rotation.setFromQuaternion(new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w))
-  }
-}
-
-
-export class GameBaseMultiplayerClient extends GameBaseClient {
+export class GameWithPlayerMultiplayerClient extends GameBaseClient {
   #socket: CliSocket
   #networkClock: THREE.Clock
   #networkReceiveClock: THREE.Clock
   /** In sec. */
   #networkReceiveDelta: number
-  #networkedObjects: Map<string, GameObjectNetworkedClient>
-  #networkedSelf: GameObjectNetworkedClient
+  #networkedObjects: Map<string, [GameObjectNetworkedBaseClient, TNetworkObjectState]>
+  #networkedSelf: [NetworkedPlayerClient, TNetworkObjectState]
   #networkLoopTimeoutId: number | NodeJS.Timeout
-
-  #targetState: TNetworkObjectState = null
 
   #trySetIdOfNetworkedSelfTimeoutId: number | NodeJS.Timeout
 
   camera: THREE.PerspectiveCamera
+  controls: PointerLockControls
+  domGameRoot: HTMLElement
 
   constructor(socket: CliSocket) {
     super()
@@ -284,7 +206,7 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
           throw new Error("Too many attempts connecting to server.")
         }
         if (this.#networkedSelf) {
-          this.#networkedSelf.userData.id = socket.id
+          this.#networkedSelf[0].userData.id = socket.id
         } else {
           this.#trySetIdOfNetworkedSelfTimeoutId = setTimeout(() => {
             trySetIdOfNetworkedSelf(attempt + 1, maxAttempts)
@@ -303,10 +225,9 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
       for (const state of networkObjectStates) {
         if (state.userData.id === socket.id) {
           // copy object state for interpolation purposes
-          this.#targetState = state
+          this.#networkedSelf[1] = state
         } else {
-          this.#networkedObjects.get(state.userData.id)?.root.setTranslation(state.translation, true)
-          this.#networkedObjects.get(state.userData.id)?.root.setRotation(state.rotation, true)
+          this.#networkedObjects.get(state.userData.id)[1] = state
         }
       }
     })
@@ -316,17 +237,17 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
       const clientsData = payload.data
 
       for (const cliData of clientsData) {
-        const newClient = new GameObjectNetworkedClient(this.physics.world, this.threeResourceManager, { id: cliData.userData.id, networked: true })
+        const newClient = new NetworkedPlayerClient(this.physics.world, this.threeResourceManager, { id: cliData.userData.id, networked: true }, null)
         await newClient.setup()
         newClient.root.setTranslation(cliData.translation, true)
         newClient.root.setRotation(cliData.rotation, true)
-        this.#networkedObjects.set(cliData.userData.id, newClient)
+        this.#networkedObjects.set(cliData.userData.id, [newClient, null])
       }
     })
 
     socket.on("client:left", (cliId) => {
       console.log("client disconnected.")
-      const obj = this.#networkedObjects.get(cliId)
+      const obj = this.#networkedObjects.get(cliId)[0]
       if (obj) {
         // remove object from physical world
         this.physics.world.removeRigidBody(obj.root)
@@ -343,7 +264,13 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
     })
   }
 
+  handleClick = (e: MouseEvent) => {
+    this.controls.lock()
+  }
+
   async setup(domGameRoot: HTMLElement) {
+    this.domGameRoot = domGameRoot
+
     const gravity = { x: 0, y: -10, z: 0 }
     this.physics = await Physics.setup(gravity)
 
@@ -360,14 +287,17 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
     const scene = new THREE.Scene()
     resources.setScene(scene)
 
-    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight)
-    this.camera.position.set(0, 8, -20)
-    const controls = new OrbitControls(this.camera, renderer.domElement)
-    resources.setControls(controls)
+    // add controls
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+    this.controls = new PointerLockControls(this.camera, this.domGameRoot)
+    resources.setControls(this.controls)
+    scene.add(this.controls.object)
+    // handle mouse controls
+    this.domGameRoot.addEventListener("click", this.handleClick)
 
     // Setup level
     const floorGeom = createGeometry(() => new THREE.PlaneGeometry(20, 20))
-    const floorMat = createMaterial(() => new THREE.MeshBasicMaterial({ color: 0x11bb11 }))
+    const floorMat = createMaterial(() => new THREE.MeshBasicMaterial({ color: 0x8888bb }))
     const floorMesh = createMesh(floorGeom, floorMat)
     // floorMesh.translateY(.1)
     floorMesh.rotation.x = -Math.PI / 2
@@ -382,8 +312,8 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
       floor
     )
 
-    this.#networkedSelf = new GameObjectNetworkedClient(world, this.threeResourceManager, { id: this.#socket.id, networked: true })
-    await this.#networkedSelf.setup()
+    this.#networkedSelf = [new NetworkedPlayerClient(world, this.threeResourceManager, { id: this.#socket.id, networked: true }, this.camera), null]
+    await this.#networkedSelf[0].setup()
   }
 
   /**
@@ -394,7 +324,8 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
     if (!this.#socket.connected) {
       return
     }
-    const state = getStateFromNetworkedObject(this.#networkedSelf)
+    const state = this.#networkedSelf[0].networkedPlayerStates
+    this.#networkedSelf[0].emptyNetworkedPlayerStates()
     this.#socket.emit("state:player", state)
   }
 
@@ -444,24 +375,40 @@ export class GameBaseMultiplayerClient extends GameBaseClient {
   }
 
   physicsLoopLogic(deltaTime: number) {
-    if (this.#targetState) {
-      // interpolate networked object
-      const currState = getStateFromNetworkedObject(this.#networkedSelf)
+    // Run physical logic of self player as he does something locally.
+    this.#networkedSelf[0].physicsLoopLogic(deltaTime)
+
+    if (this.#networkedSelf[1]) {
+      // interpolate networked self
+      const currState = getStateFromNetworkedObject(this.#networkedSelf[0])
 
       const interpolationFactor = Math.min(this.physicsLoopTook / (this.#networkReceiveDelta * 1000), 1)
-      const { translation, rotation } = this.interpolate(currState, this.#targetState, interpolationFactor)
+      const { translation, rotation } = this.interpolate(currState, this.#networkedSelf[1], interpolationFactor)
 
-      this.#networkedSelf.root.setTranslation(translation, true)
-      this.#networkedSelf.root.setRotation(rotation, true)
+      this.#networkedSelf[0].root.setTranslation(translation, true)
+      this.#networkedSelf[0].root.setRotation(rotation, true)
     }
+
+    // interpolate each networked object
+    this.#networkedObjects.forEach(([obj, targetState]) => {
+      if (!targetState) return
+
+      const currState = getStateFromNetworkedObject(obj)
+
+      const interpolationFactor = Math.min(this.physicsLoopTook / (this.#networkReceiveDelta * 1000), 1)
+      const { translation, rotation } = this.interpolate(currState, targetState, interpolationFactor)
+
+      obj.root.setTranslation(translation, true)
+      obj.root.setRotation(rotation, true)
+    })
 
     // physics step
     this.physics.world.step()
   }
 
   drawLoopLogic(deltaTime: number) {
-    this.#networkedSelf.drawLoopLogic(deltaTime)
-    this.#networkedObjects.forEach(obj => {
+    this.#networkedSelf[0].drawLoopLogic(deltaTime)
+    this.#networkedObjects.forEach(([obj,]) => {
       obj.drawLoopLogic(deltaTime)
     })
 

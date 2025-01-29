@@ -1,28 +1,16 @@
 import * as THREE from "three";
+import { PointerLockControls } from "three/examples/jsm/Addons.js";
 import { Socket } from "socket.io";
 import { Socket as CliSocket } from "socket.io-client";
 import { GameBase, GameBaseClient } from "./game-base.js";
-import { GameObjectNetworkedBase, TUserData } from "./game-object-base.js";
-export type TNetworkObjectState = {
-    userData: TUserData;
-    translation: {
-        x: number;
-        y: number;
-        z: number;
-    };
-    rotation: {
-        x: number;
-        y: number;
-        z: number;
-        w: number;
-    };
+import { TNetworkObjectState } from "./game-networked.js";
+import { NetworkedPlayerServer } from "./game-objects/player-networked.js";
+import { TKeyboardStateObj } from "./keyboard-context.jsx";
+export type TNetworkedPlayerState = {
+    objectState: TNetworkObjectState;
+    keyboardState: TKeyboardStateObj;
 };
-export declare function getStateFromNetworkedObject(obj: GameObjectNetworkedBase): TNetworkObjectState;
-declare class GameObjectNetworked extends GameObjectNetworkedBase {
-    setup(): Promise<void>;
-    physicsLoopLogic(deltaTime: number): void;
-}
-export declare class GameBaseMultiplayerServer extends GameBase {
+export declare class GameWithPlayerMultiplayerServer extends GameBase {
     #private;
     constructor(clients: Socket[]);
     /**
@@ -32,7 +20,7 @@ export declare class GameBaseMultiplayerServer extends GameBase {
      */
     addClient(socket: Socket): Promise<void>;
     shareStateWithClient(socket: Socket): void;
-    notifyClientsNewClient(cliObject: GameObjectNetworked): void;
+    notifyClientsNewClient(cliObject: NetworkedPlayerServer): void;
     notifyClientsClientLeft(cliId: string): void;
     setup(): Promise<void>;
     /**
@@ -47,10 +35,13 @@ export declare class GameBaseMultiplayerServer extends GameBase {
     physicsLoopLogic(deltaTime: number): void;
     derivedCleanup(): void;
 }
-export declare class GameBaseMultiplayerClient extends GameBaseClient {
+export declare class GameWithPlayerMultiplayerClient extends GameBaseClient {
     #private;
     camera: THREE.PerspectiveCamera;
+    controls: PointerLockControls;
+    domGameRoot: HTMLElement;
     constructor(socket: CliSocket);
+    handleClick: (e: MouseEvent) => void;
     setup(domGameRoot: HTMLElement): Promise<void>;
     /**
      * Shares local state with the server.
@@ -72,4 +63,3 @@ export declare class GameBaseMultiplayerClient extends GameBaseClient {
     drawLoopLogic(deltaTime: number): void;
     derivedCleanup(): void;
 }
-export {};

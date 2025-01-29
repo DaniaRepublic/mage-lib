@@ -1,47 +1,29 @@
-var s = Object.defineProperty;
-var d = (r, i, e) => i in r ? s(r, i, { enumerable: !0, configurable: !0, writable: !0, value: e }) : r[i] = e;
-var a = (r, i, e) => d(r, typeof i != "symbol" ? i + "" : i, e);
-import { GameObjectDrawableBase as o } from "./index.es4.js";
-import { Scene as p, OrthographicCamera as u, SpriteMaterial as m, Sprite as c, CanvasTexture as w } from "./index.es14.js";
-class S extends o {
-  constructor(e) {
-    super(e);
-    a(this, "hudScene");
-    a(this, "hudCamera");
-    a(this, "jumpSprite");
+var a = Object.defineProperty;
+var n = (t, r, e) => r in t ? a(t, r, { enumerable: !0, configurable: !0, writable: !0, value: e }) : t[r] = e;
+var i = (t, r, e) => n(t, typeof r != "symbol" ? r + "" : r, e);
+import o from "./index.es16.js";
+class s {
+  /**
+   * Use .setup method instead of constructor. Avoid using constructor directly.
+   * @param gravity TGravity
+   */
+  constructor(r) {
+    i(this, "gravity");
+    i(this, "world");
+    this.gravity = r, this.world = new o.World(r);
   }
-  async setup() {
-    this.hudScene = new p(), this.hudCamera = new u(
-      -window.innerWidth / 2,
-      window.innerWidth / 2,
-      window.innerHeight / 2,
-      -window.innerHeight / 2,
-      1,
-      10
-    ), this.hudCamera.position.z = 10;
-    const e = this.createTextTexture("🦘".repeat(3)), t = new m({ map: e });
-    this.jumpSprite = new c(t), this.jumpSprite.scale.set(150, 50, 1), this.jumpSprite.position.set(-window.innerWidth / 2 + 140, window.innerHeight / 2 - 40, 1), this.hudScene.add(this.jumpSprite);
+  /**
+   * Initializes physics and returns a Game instance.
+   * @param gravity TGravity
+   * @returns Game
+   */
+  static async setup(r) {
+    return await o.init(), new s(r);
   }
-  createTextTexture(e) {
-    const t = document.createElement("canvas"), n = t.getContext("2d");
-    t.width = 384, t.height = 128, n.font = "Bold 72px Arial", n.fillStyle = "white", n.textAlign = "center", n.textBaseline = "middle", n.fillText(e, t.width / 2, t.height / 2);
-    const h = new w(t);
-    return h.needsUpdate = !0, h;
-  }
-  updateJumps(e) {
-    const t = this.createTextTexture("🦘".repeat(e));
-    this.jumpSprite.material.map = t, this.jumpSprite.material.needsUpdate = !0;
-  }
-  drawLoopLogic(e) {
-    this.threeResourceManager.renderer.clearDepth(), this.threeResourceManager.renderer.render(this.hudScene, this.hudCamera);
-  }
-  physicsLoopLogic(e) {
-  }
-  // Call this when window is resized
-  resize() {
-    this.hudCamera.left = -window.innerWidth / 2, this.hudCamera.right = window.innerWidth / 2, this.hudCamera.top = window.innerHeight / 2, this.hudCamera.bottom = -window.innerHeight / 2, this.hudCamera.updateProjectionMatrix(), this.jumpSprite.position.set(-window.innerWidth / 2 + 140, window.innerHeight / 2 - 40, 1);
+  free() {
+    this.world.free();
   }
 }
 export {
-  S as HUD
+  s as Physics
 };

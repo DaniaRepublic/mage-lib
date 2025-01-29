@@ -1,5 +1,6 @@
 export * from "./game-base.js";
 export * from "./game-networked.js";
+export * from "./game-networked-player.js";
 export * from "./game-object-base.js";
 export * from "./keyboard-context.jsx";
 export * from "./three-helpers.js";

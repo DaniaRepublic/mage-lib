@@ -63,7 +63,7 @@ export class Player extends GameObjectPhysicalDrawableBase {
   jumpCoolDown: number = 0.3 // time in sec
   currJumpCoolDown: number = 0
   physicsLoopLogic(deltaTime: number) {
-    const { space, keyw, keys, keya, keyd, shiftleft, menuOpen } = KeyboardSingleton.getKeyboardState()
+    const { space, keyw, keys, keya, keyd, shiftleft, menuOpen } = KeyboardSingleton.getKeyboardStateObj()
 
     // ? handle game inputs if the player is not in menu
     if (!menuOpen) {

@@ -10,6 +10,7 @@ import { Physics } from "../rapier/physics.js"
 import { Player } from "../game-objects/player.js"
 import { HUD } from "../game-objects/hud.js"
 
+
 export class GameWithGLTFLoading extends GameBaseClientDebug {
   gltfLoaderWrapper: GLTFLoaderWrapper
 

@@ -1,31 +1,53 @@
-import { TrianglesDrawMode as f, TriangleFanDrawMode as a, TriangleStripDrawMode as c } from "./index.es14.js";
-function p(r, o) {
-  if (o === f)
-    return console.warn("THREE.BufferGeometryUtils.toTrianglesDrawMode(): Geometry already defined as triangles."), r;
-  if (o === a || o === c) {
-    let n = r.getIndex();
-    if (n === null) {
-      const e = [], u = r.getAttribute("position");
-      if (u !== void 0) {
-        for (let l = 0; l < u.count; l++)
-          e.push(l);
-        r.setIndex(e), n = r.getIndex();
-      } else
-        return console.error("THREE.BufferGeometryUtils.toTrianglesDrawMode(): Undefined position attribute. Processing not possible."), r;
-    }
-    const s = n.count - 2, t = [];
-    if (o === a)
-      for (let e = 1; e <= s; e++)
-        t.push(n.getX(0)), t.push(n.getX(e)), t.push(n.getX(e + 1));
-    else
-      for (let e = 0; e < s; e++)
-        e % 2 === 0 ? (t.push(n.getX(e)), t.push(n.getX(e + 1)), t.push(n.getX(e + 2))) : (t.push(n.getX(e + 2)), t.push(n.getX(e + 1)), t.push(n.getX(e)));
-    t.length / 3 !== s && console.error("THREE.BufferGeometryUtils.toTrianglesDrawMode(): Unable to generate correct amount of triangles.");
-    const i = r.clone();
-    return i.setIndex(t), i.clearGroups(), i;
-  } else
-    return console.error("THREE.BufferGeometryUtils.toTrianglesDrawMode(): Unknown draw mode:", o), r;
+import "./index.es17.js";
+import { Vector3 as s, Controls as c, Euler as l } from "./index.es15.js";
+const o = new l(0, 0, 0, "YXZ"), n = new s(), h = { type: "change" }, m = { type: "lock" }, a = { type: "unlock" }, r = Math.PI / 2;
+class v extends c {
+  constructor(e, t = null) {
+    super(e, t), this.isLocked = !1, this.minPolarAngle = 0, this.maxPolarAngle = Math.PI, this.pointerSpeed = 1, this._onMouseMove = d.bind(this), this._onPointerlockChange = u.bind(this), this._onPointerlockError = E.bind(this), this.domElement !== null && this.connect();
+  }
+  connect() {
+    this.domElement.ownerDocument.addEventListener("mousemove", this._onMouseMove), this.domElement.ownerDocument.addEventListener("pointerlockchange", this._onPointerlockChange), this.domElement.ownerDocument.addEventListener("pointerlockerror", this._onPointerlockError);
+  }
+  disconnect() {
+    this.domElement.ownerDocument.removeEventListener("mousemove", this._onMouseMove), this.domElement.ownerDocument.removeEventListener("pointerlockchange", this._onPointerlockChange), this.domElement.ownerDocument.removeEventListener("pointerlockerror", this._onPointerlockError);
+  }
+  dispose() {
+    this.disconnect();
+  }
+  getObject() {
+    return console.warn("THREE.PointerLockControls: getObject() has been deprecated. Use controls.object instead."), this.object;
+  }
+  getDirection(e) {
+    return e.set(0, 0, -1).applyQuaternion(this.object.quaternion);
+  }
+  moveForward(e) {
+    if (this.enabled === !1) return;
+    const t = this.object;
+    n.setFromMatrixColumn(t.matrix, 0), n.crossVectors(t.up, n), t.position.addScaledVector(n, e);
+  }
+  moveRight(e) {
+    if (this.enabled === !1) return;
+    const t = this.object;
+    n.setFromMatrixColumn(t.matrix, 0), t.position.addScaledVector(n, e);
+  }
+  lock() {
+    this.domElement.requestPointerLock();
+  }
+  unlock() {
+    this.domElement.ownerDocument.exitPointerLock();
+  }
+}
+function d(i) {
+  if (this.enabled === !1 || this.isLocked === !1) return;
+  const e = this.object;
+  o.setFromQuaternion(e.quaternion), o.y -= i.movementX * 2e-3 * this.pointerSpeed, o.x -= i.movementY * 2e-3 * this.pointerSpeed, o.x = Math.max(r - this.maxPolarAngle, Math.min(r - this.minPolarAngle, o.x)), e.quaternion.setFromEuler(o), this.dispatchEvent(h);
+}
+function u() {
+  this.domElement.ownerDocument.pointerLockElement === this.domElement ? (this.dispatchEvent(m), this.isLocked = !0) : (this.dispatchEvent(a), this.isLocked = !1);
+}
+function E() {
+  console.error("THREE.PointerLockControls: Unable to use Pointer Lock API");
 }
 export {
-  p as toTrianglesDrawMode
+  v as PointerLockControls
 };

@@ -1,29 +1,38 @@
 import { Accessor, JSX } from "solid-js";
 export type TAvailableKeys = "menuOpen" | "escape" | "keyw" | "keys" | "keya" | "keyd" | "shiftleft" | "space" | "digit1" | "digit2" | "digit3" | "digit4" | "digit5" | "digit6" | "digit7" | "digit8" | "digit9" | "digit0";
 export declare const keyboardEvents: Set<TAvailableKeys>;
-export type KeyboardState = {
-    menuOpen: boolean;
-    escape: boolean;
-    keyw: boolean;
-    keys: boolean;
-    keya: boolean;
-    keyd: boolean;
-    shiftleft: boolean;
-    space: boolean;
-    digit1: boolean;
-    digit2: boolean;
-    digit3: boolean;
-    digit4: boolean;
-    digit5: boolean;
-    digit6: boolean;
-    digit7: boolean;
-    digit8: boolean;
-    digit9: boolean;
-    digit0: boolean;
+/** This maps keys to powers of 2. It's needed for efficient serialization over network. */
+export declare const keyboardEventToBit: Map<TAvailableKeys, number>;
+export type TKeyboardState = Map<TAvailableKeys, boolean>;
+/** This is easier to use by keyboard consumer than the map . */
+export type TKeyboardStateObj = {
+    menuOpen: false;
+    escape: false;
+    keyw: false;
+    keys: false;
+    keya: false;
+    keyd: false;
+    shiftleft: false;
+    space: false;
+    digit1: false;
+    digit2: false;
+    digit3: false;
+    digit4: false;
+    digit5: false;
+    digit6: false;
+    digit7: false;
+    digit8: false;
+    digit9: false;
+    digit0: false;
 };
-export declare function createInitialKeyboardState(): KeyboardState;
+export declare function keyboardStateToBitMask(kbState: TKeyboardState): number;
+export declare function bitMaskToKeyboardState(bitMask: number): TKeyboardState;
+export declare function keyboardStateToKeyboardStateObj(kbState: TKeyboardState): TKeyboardStateObj;
+export declare function bitmaskToKeyboardStateObj(bitmask: any): TKeyboardStateObj;
+export declare function bitmasksToKeyboardStateObjs(keyboardStateBitmasks: number[]): TKeyboardStateObj[];
+export declare function createInitialKeyboardState(): TKeyboardState;
 type TKeyboardCtx = [
-    Accessor<KeyboardState>,
+    Accessor<TKeyboardState>,
     {
         keydown(key: TAvailableKeys): void;
         keyup(key: TAvailableKeys): void;
@@ -31,7 +40,7 @@ type TKeyboardCtx = [
 ];
 interface IKeyboardProvider {
     children: JSX.Element;
-    initialKeyboardState: KeyboardState;
+    initialKeyboardState: TKeyboardState;
 }
 export declare function KeyboardProvider(props: IKeyboardProvider): JSX.Element;
 export declare function useKeyboard(): TKeyboardCtx;
@@ -53,8 +62,8 @@ export declare class KeyboardSingleton {
     private static instance;
     private keyboard;
     static getInstance(): KeyboardSingleton;
-    static setKeyboard(keyboard: Accessor<KeyboardState>): void;
-    static getKeyboard(): Accessor<KeyboardState>;
-    static getKeyboardState(): KeyboardState;
+    static setKeyboard(keyboard: Accessor<TKeyboardState>): void;
+    static getKeyboard(): Accessor<TKeyboardState>;
+    static getKeyboardStateObj(): TKeyboardStateObj;
 }
 export {};

@@ -82,7 +82,7 @@ export class ShapeCastGame extends GameBaseClientDebug {
   jumpCoolDown: number = 0.3 // time in sec
   currJumpCoolDown: number = 0
   physicsLoopLogic(deltaTime: number): void {
-    const { space } = KeyboardSingleton.getKeyboardState()
+    const { space } = KeyboardSingleton.getKeyboardStateObj()
 
     if (space && this.currJumpCoolDown === 0) {
       this.currJumpCoolDown = this.jumpCoolDown

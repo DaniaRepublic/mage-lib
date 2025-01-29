@@ -1,4 +1,5 @@
 import RAPIER from "@dimforge/rapier3d-compat";
+import * as THREE from "three";
 import { ThreeResourceManager } from "./three/resource-managing.js";
 export type TUserData = {
     id: string;
@@ -89,10 +90,13 @@ export declare abstract class GameObjectPhysicalDrawableBase extends GameObjectB
     threeResourceManager: ThreeResourceManager;
     constructor(world: RAPIER.World, threeResourceManager: ThreeResourceManager, userData?: TUserData);
 }
+export interface IGameObjectNetworkedBase extends IGameObjectPhysicalBase {
+}
 export declare abstract class GameObjectNetworkedBase extends GameObjectPhysicalBase {
     constructor(world: RAPIER.World, userData: TUserData);
 }
 export declare abstract class GameObjectNetworkedBaseClient extends GameObjectPhysicalDrawableBase {
+    rendererRoot: THREE.Mesh;
     constructor(world: RAPIER.World, threeResourceManager: ThreeResourceManager, userData: TUserData);
 }
 export {};

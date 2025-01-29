@@ -1,5 +1,8 @@
 import RAPIER from "@dimforge/rapier3d-compat"
+import * as THREE from "three"
+
 import { ThreeResourceManager } from "./three/resource-managing.js"
+
 
 export type TUserData = {
   id: string,
@@ -141,7 +144,7 @@ export abstract class GameObjectPhysicalDrawableBase extends GameObjectBaseClien
 }
 
 // TODO: implement networked game object. Its state should be replicated by the networked game.
-interface IGameObjectNetworkedBase extends IGameObjectPhysicalBase { }
+export interface IGameObjectNetworkedBase extends IGameObjectPhysicalBase { }
 
 export abstract class GameObjectNetworkedBase extends GameObjectPhysicalBase {
   constructor(world: RAPIER.World, userData: TUserData) {
@@ -150,6 +153,8 @@ export abstract class GameObjectNetworkedBase extends GameObjectPhysicalBase {
 }
 
 export abstract class GameObjectNetworkedBaseClient extends GameObjectPhysicalDrawableBase {
+  rendererRoot: THREE.Mesh
+
   constructor(world: RAPIER.World, threeResourceManager: ThreeResourceManager, userData: TUserData) {
     super(world, threeResourceManager, userData)
   }

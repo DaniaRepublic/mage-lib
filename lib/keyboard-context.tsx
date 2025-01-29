@@ -11,35 +11,98 @@ export const keyboardEvents = new Set<TAvailableKeys>(
   ]
 )
 
-export type KeyboardState = {
-  menuOpen: boolean;
-  escape: boolean;
-  keyw: boolean;
-  keys: boolean;
-  keya: boolean;
-  keyd: boolean;
-  shiftleft: boolean;
-  space: boolean;
-  digit1: boolean;
-  digit2: boolean;
-  digit3: boolean;
-  digit4: boolean;
-  digit5: boolean;
-  digit6: boolean;
-  digit7: boolean;
-  digit8: boolean;
-  digit9: boolean;
-  digit0: boolean;
+/** This maps keys to powers of 2. It's needed for efficient serialization over network. */
+export const keyboardEventToBit = new Map<TAvailableKeys, number>([
+  ["menuOpen", 1],
+  ["escape", 2],
+  ["keyw", 4],
+  ["keys", 8],
+  ["keya", 16],
+  ["keyd", 32],
+  ["shiftleft", 64],
+  ["space", 128],
+  ["digit1", 256],
+  ["digit2", 512],
+  ["digit3", 1024],
+  ["digit4", 2048],
+  ["digit5", 4096],
+  ["digit6", 8192],
+  ["digit7", 16384],
+  ["digit8", 32768],
+  ["digit9", 65536],
+  ["digit0", 131072]
+])
+
+export type TKeyboardState = Map<TAvailableKeys, boolean>
+
+/** This is easier to use by keyboard consumer than the map . */
+export type TKeyboardStateObj = {
+  menuOpen: false,
+  escape: false,
+  keyw: false,
+  keys: false,
+  keya: false,
+  keyd: false,
+  shiftleft: false,
+  space: false,
+  digit1: false,
+  digit2: false,
+  digit3: false,
+  digit4: false,
+  digit5: false,
+  digit6: false,
+  digit7: false,
+  digit8: false,
+  digit9: false,
+  digit0: false,
 }
 
-export function createInitialKeyboardState(): KeyboardState {
-  let initialState: KeyboardState = Object()
-  keyboardEvents.forEach(key => initialState[key] = false)
+export function keyboardStateToBitMask(kbState: TKeyboardState): number {
+  let acc = 0
+  kbState.forEach((val, key) => {
+    if (val) {
+      acc += keyboardEventToBit.get(key)
+    }
+  })
+  return acc
+}
+
+export function bitMaskToKeyboardState(bitMask: number): TKeyboardState {
+  let m = new Map<TAvailableKeys, boolean>()
+  keyboardEventToBit.forEach((val, key) => {
+    m.set(key, Boolean(val & bitMask))
+  })
+  return m
+}
+
+export function keyboardStateToKeyboardStateObj(kbState: TKeyboardState): TKeyboardStateObj {
+  return Object.fromEntries(kbState.entries()) as TKeyboardStateObj
+}
+
+export function bitmaskToKeyboardStateObj(bitmask) {
+  return keyboardStateToKeyboardStateObj(
+    bitMaskToKeyboardState(bitmask)
+  )
+}
+
+export function bitmasksToKeyboardStateObjs(keyboardStateBitmasks: number[]) {
+  let keyboardStateObjs: TKeyboardStateObj[] = []
+  keyboardStateBitmasks.forEach(bitmask => {
+    keyboardStateObjs.push(bitmaskToKeyboardStateObj(bitmask))
+  })
+  return keyboardStateObjs
+}
+
+export function createInitialKeyboardState(): TKeyboardState {
+  let initialState: TKeyboardState = new Map()
+  keyboardEvents.forEach(key => {
+    initialState.set(key, false)
+  })
   return initialState
 }
 
 type TKeyboardCtx = [
-  Accessor<KeyboardState>,
+  Accessor<TKeyboardState>,
   {
     keydown(key: TAvailableKeys): void;
     keyup(key: TAvailableKeys): void;
@@ -50,7 +113,7 @@ const KeyboardCtx = createContext<TKeyboardCtx>(null)
 
 interface IKeyboardProvider {
   children: JSX.Element,
-  initialKeyboardState: KeyboardState
+  initialKeyboardState: TKeyboardState
 }
 
 export function KeyboardProvider(props: IKeyboardProvider) {
@@ -59,16 +122,18 @@ export function KeyboardProvider(props: IKeyboardProvider) {
     keyboardState,
     {
       keydown(key: TAvailableKeys) {
-        setKeyboardState(prevKeyboardState => ({
-          ...prevKeyboardState,
-          [key]: true
-        }))
+        setKeyboardState(prevKeyboardState => {
+          let m = new Map(prevKeyboardState)
+          m.set(key, true)
+          return m
+        })
       },
       keyup(key: TAvailableKeys) {
-        setKeyboardState(prevKeyboardState => ({
-          ...prevKeyboardState,
-          [key]: false
-        }))
+        setKeyboardState(prevKeyboardState => {
+          let m = new Map(prevKeyboardState)
+          m.set(key, false)
+          return m
+        })
       },
     }
   ]
@@ -151,7 +216,7 @@ export function KeyboardProviderWithListenersAndInitialState(props: { children: 
  */
 export class KeyboardSingleton {
   private static instance: KeyboardSingleton
-  private keyboard: Accessor<KeyboardState>
+  private keyboard: Accessor<TKeyboardState>
 
   static getInstance() {
     if (!this.instance) {
@@ -160,7 +225,7 @@ export class KeyboardSingleton {
     return this.instance
   }
 
-  static setKeyboard(keyboard: Accessor<KeyboardState>) {
+  static setKeyboard(keyboard: Accessor<TKeyboardState>) {
     this.getInstance().keyboard = keyboard
   }
 
@@ -168,7 +233,8 @@ export class KeyboardSingleton {
     return this.getInstance().keyboard
   }
 
-  static getKeyboardState() {
-    return this.getInstance().keyboard()
+  static getKeyboardStateObj() {
+    const m = this.getInstance().keyboard()
+    return keyboardStateToKeyboardStateObj(m)
   }
 }

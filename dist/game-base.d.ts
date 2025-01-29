@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { Physics } from "./rapier/physics.js";
 import { ThreeResourceManager } from "./three/resource-managing.js";
+export declare const PHYSICS_UPDATE_INTERVAL = 16.67;
 export interface IServerSetup {
     setup(): Promise<void>;
 }
@@ -8,9 +9,10 @@ export interface IGameBase {
     physics: Physics;
     physicsClock: THREE.Clock;
     physicsLoopTimeoutId: number | NodeJS.Timeout;
+    physicsLoopTook: number;
     /**
      * This function for physics loop needs to be implemented for every game.
-     * @param deltaTime time delta since last startLoop
+     * @param deltaTime seconds passed since last startLoop
      */
     physicsLoopLogic(deltaTime: number): void;
     /**
@@ -39,6 +41,7 @@ export declare abstract class GameBase implements IGameBase, IServerSetup {
     set physics(physics: Physics);
     get physicsClock(): THREE.Clock;
     get physicsLoopTimeoutId(): number | NodeJS.Timeout;
+    get physicsLoopTook(): number;
     constructor();
     abstract setup(): Promise<void>;
     abstract physicsLoopLogic(deltaTime: number): void;
@@ -64,6 +67,10 @@ export interface IGameBaseClient extends IGameBase {
     threeResourceManager: ThreeResourceManager;
     drawClock: THREE.Clock;
     drawLoopAnimationFrameId: number;
+    /**
+     * This function for draw loop needs to be implemented for every game.
+     * @param deltaTime seconds passed since last startLoop
+     */
     drawLoopLogic(deltaTime: number): void;
     /**
      * Needs to be an arrow function to save 'this' reference to the class in function scope.
@@ -80,6 +87,7 @@ export declare abstract class GameBaseClient implements IGameBaseClient, IClient
     #private;
     get physics(): Physics;
     set physics(physics: Physics);
+    get physicsLoopTook(): number;
     get threeResourceManager(): ThreeResourceManager;
     get drawClock(): THREE.Clock;
     get physicsClock(): THREE.Clock;

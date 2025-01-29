@@ -3,6 +3,8 @@ import * as THREE from "three"
 import { Physics } from "./rapier/physics.js";
 import { ThreeResourceManager } from "./three/resource-managing.js";
 
+export const PHYSICS_UPDATE_INTERVAL = 16.67
+
 export interface IServerSetup {
   setup(): Promise<void>
 }
@@ -11,10 +13,11 @@ export interface IGameBase {
   physics: Physics
   physicsClock: THREE.Clock
   physicsLoopTimeoutId: number | NodeJS.Timeout
+  physicsLoopTook: number
 
   /**
    * This function for physics loop needs to be implemented for every game.
-   * @param deltaTime time delta since last startLoop
+   * @param deltaTime seconds passed since last startLoop
    */
   physicsLoopLogic(deltaTime: number): void
 
@@ -46,6 +49,7 @@ export abstract class GameBase implements IGameBase, IServerSetup {
   #physics: Physics
   #physicsClock: THREE.Clock
   #physicsLoopTimeoutId: number | NodeJS.Timeout
+  #physicsLoopTook: number
 
   get physics() {
     return this.#physics
@@ -61,6 +65,10 @@ export abstract class GameBase implements IGameBase, IServerSetup {
 
   get physicsLoopTimeoutId() {
     return this.#physicsLoopTimeoutId
+  }
+
+  get physicsLoopTook() {
+    return this.#physicsLoopTook
   }
 
   constructor() {
@@ -79,7 +87,9 @@ export abstract class GameBase implements IGameBase, IServerSetup {
     this.physicsLoopLogic(deltaTime)
     const tok = performance.now()
 
-    this.#physicsLoopTimeoutId = setTimeout(this.startPhysicsLoop, 16.67 - (tok - tik))
+
+    this.#physicsLoopTook = PHYSICS_UPDATE_INTERVAL - (tok - tik)
+    this.#physicsLoopTimeoutId = setTimeout(this.startPhysicsLoop, this.#physicsLoopTook)
   }
 
   customCleanup() { }
@@ -112,6 +122,10 @@ export interface IGameBaseClient extends IGameBase {
   drawClock: THREE.Clock
   drawLoopAnimationFrameId: number
 
+  /**
+   * This function for draw loop needs to be implemented for every game.
+   * @param deltaTime seconds passed since last startLoop
+   */
   drawLoopLogic(deltaTime: number): void
 
   /**
@@ -128,6 +142,7 @@ export interface IGameBaseClient extends IGameBase {
  */
 export abstract class GameBaseClient implements IGameBaseClient, IClientSetup {
   #physics: Physics
+  #physicsLoopTook: number
   #physicsClock: THREE.Clock
   #threeResourceManager: ThreeResourceManager
   #drawClock: THREE.Clock
@@ -140,6 +155,10 @@ export abstract class GameBaseClient implements IGameBaseClient, IClientSetup {
 
   set physics(physics: Physics) {
     this.#physics = physics
+  }
+
+  get physicsLoopTook() {
+    return this.#physicsLoopTook
   }
 
   get threeResourceManager() {
@@ -182,13 +201,14 @@ export abstract class GameBaseClient implements IGameBaseClient, IClientSetup {
 
   startPhysicsLoop = () => {
     const deltaTime = this.#physicsClock.getDelta()
-
+    
     // measure time it took to run the loop and subtract it from delay until next frame
     const tik = performance.now()
     this.physicsLoopLogic(deltaTime)
     const tok = performance.now()
 
-    this.#physicsLoopTimeoutId = setTimeout(this.startPhysicsLoop, 16.67 - (tok - tik))
+    this.#physicsLoopTook = PHYSICS_UPDATE_INTERVAL - (tok - tik)
+    this.#physicsLoopTimeoutId = setTimeout(this.startPhysicsLoop, this.#physicsLoopTook)
   }
 
   customCleanup() { }
@@ -249,7 +269,7 @@ export abstract class GameBaseClientDebug extends GameBaseClient {
       this.physicsTimer = [0, 0]
     }
 
-    this.#physicsLoopTimeoutId = setTimeout(this.startPhysicsLoop, 16.67 - (tok - tik))
+    this.#physicsLoopTimeoutId = setTimeout(this.startPhysicsLoop, PHYSICS_UPDATE_INTERVAL - (tok - tik))
   }
 
   cleanup() {
